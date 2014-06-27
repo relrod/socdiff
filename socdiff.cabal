@@ -41,6 +41,6 @@ executable socdiff
                      , filepath >= 1.3 && < 2
                      , haxl >= 0.1.0.0 && < 0.2
                      , socdiff
-  main-is:             socdiff.hs
+  main-is:             src/socdiff.hs
   ghc-options:         -Wall -fno-warn-name-shadowing
   default-language:    Haskell2010
