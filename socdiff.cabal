@@ -37,7 +37,10 @@ library
 
 executable socdiff
   build-depends:       base >= 4 && < 5
+                     , directory >= 1.2 && < 2
+                     , filepath >= 1.3 && < 2
                      , haxl >= 0.1.0.0 && < 0.2
+                     , socdiff
   main-is:             socdiff.hs
   ghc-options:         -Wall -fno-warn-name-shadowing
   default-language:    Haskell2010
