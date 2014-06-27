@@ -1,6 +1,6 @@
-module Web.Sdiff.Github.Github where
+module Web.Socdiff.Github.Github where
 
-import Web.Sdiff.Github.DataSource
+import Web.Socdiff.Github.DataSource
 
 import Haxl.Core
 

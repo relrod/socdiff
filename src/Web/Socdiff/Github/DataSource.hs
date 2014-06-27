@@ -7,7 +7,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Web.Sdiff.Github.DataSource where
+module Web.Socdiff.Github.DataSource where
 
 import Control.Concurrent.Async
 import Control.Concurrent.QSem
