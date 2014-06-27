@@ -19,6 +19,7 @@ sources. The workflow will look like this:
 * The next time you run the program this file is read and parsed, the data
   sources are checked again, and a diff is generated and rendered with pretty
   colors and whatnot :P
+* `~/.sdiff_cache` then gets updated with the newly obtained information.
 
 # License
 
