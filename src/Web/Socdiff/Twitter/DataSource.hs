@@ -17,7 +17,7 @@ import Control.Lens
 import Data.Aeson.Lens
 import qualified Data.ByteString.Char8 as C8
 import Data.Hashable
-import Data.List (sort)
+import Data.List (intercalate, sort)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Typeable
@@ -27,6 +27,7 @@ import Haxl.Core
 
 data TwitterReq a where
    GetFollowerIDs :: String -> TwitterReq [Integer]
+   GetUsernames :: [Integer] -> TwitterReq [T.Text]
   deriving Typeable
 
 deriving instance Eq (TwitterReq a)
@@ -36,6 +37,7 @@ instance Show1 TwitterReq where show1 = show
 
 instance Hashable (TwitterReq a) where
   hashWithSalt s (GetFollowerIDs username) = hashWithSalt s (1::Int, username)
+  hashWithSalt s (GetUsernames uid) = hashWithSalt s (2::Int, uid)
 
 instance StateKey TwitterReq where
   data State TwitterReq = TwitterState { numThreads :: Int
@@ -79,3 +81,10 @@ fetchReq consumerKey consumerSecret (GetFollowerIDs u) = do
   let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
   resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/followers/ids.json?screen_name=" ++ u)
   return $ sort $ resp ^.. responseBody . Data.Aeson.Lens.key "ids" . values . _Integer
+
+fetchReq consumerKey consumerSecret (GetUsernames uids) = do
+  bearerToken <- getToken consumerKey consumerSecret
+  let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
+      uids' = intercalate "," $ fmap show uids
+  resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/users/lookup.json?user_id=" ++ uids')
+  return $ sort $ resp ^.. responseBody . values . key "screen_name" . _String
