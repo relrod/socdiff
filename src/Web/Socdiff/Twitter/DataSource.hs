@@ -64,7 +64,8 @@ twitterFetch TwitterState{..} _flags _user bfs =
 fetchAsync :: T.Text -> T.Text -> QSem -> BlockedFetch TwitterReq -> IO (Async ())
 fetchAsync consumerKey consumerSecret sem (BlockedFetch req rvar) =
   async $ bracket_ (waitQSem sem) (signalQSem sem) $ do
-    e <- Control.Exception.try $ liftIO $ fetchReq consumerKey consumerSecret req
+    e <- Control.Exception.try $ liftIO $
+           getToken consumerKey consumerSecret >>= fetchReq req
     case e of
       Left ex -> putFailure rvar (ex :: SomeException)
       Right a -> putSuccess rvar a
@@ -73,17 +74,15 @@ getToken :: T.Text -> T.Text -> IO T.Text
 getToken consumerKey consumerSecret = do
   let bearerOpts = defaults & auth .~ basicAuth (TE.encodeUtf8 consumerKey) (TE.encodeUtf8 consumerSecret)
   bearerResp <- postWith bearerOpts "https://api.twitter.com/oauth2/token" ["grant_type" := C8.pack "client_credentials"]
-  return $ bearerResp ^?! responseBody . Data.Aeson.Lens.key "access_token" . _String
+  return $ bearerResp ^?! responseBody . key "access_token" . _String
 
-fetchReq :: T.Text -> T.Text -> TwitterReq a -> IO a
-fetchReq consumerKey consumerSecret (GetFollowerIDs u) = do
-  bearerToken <- getToken consumerKey consumerSecret
+fetchReq :: TwitterReq a -> T.Text -> IO a
+fetchReq (GetFollowerIDs u) bearerToken = do
   let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
   resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/followers/ids.json?screen_name=" ++ u)
-  return $ sort $ resp ^.. responseBody . Data.Aeson.Lens.key "ids" . values . _Integer
+  return $ sort $ resp ^.. responseBody . key "ids" . values . _Integer
 
-fetchReq consumerKey consumerSecret (GetUsernames uids) = do
-  bearerToken <- getToken consumerKey consumerSecret
+fetchReq (GetUsernames uids) bearerToken = do
   let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
       uids' = intercalate "," $ fmap show uids
   resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/users/lookup.json?user_id=" ++ uids')
