@@ -1,11 +1,16 @@
 module Main where
 
 import Data.List ((\\), intercalate, sort)
+import qualified Data.Text as T
 import Haxl.Core
-import qualified Web.Socdiff.Github.DataSource as Github
-import qualified Web.Socdiff.Github.Github as Github
 import System.Directory (createDirectoryIfMissing, doesFileExist, getHomeDirectory)
 import System.FilePath ((</>))
+
+import qualified Web.Socdiff.Github.DataSource as Github
+import qualified Web.Socdiff.Github.Github as Github
+
+import qualified Web.Socdiff.Twitter.DataSource as Twitter
+import qualified Web.Socdiff.Twitter.Twitter as Twitter
 
 main :: IO ()
 main = do
@@ -13,6 +18,7 @@ main = do
   let cachePath = home </> ".socdiff_cache"
   createDirectoryIfMissing False cachePath
   github cachePath "Github" "CodeBlock"
+  twitter cachePath "Twitter" "relrod6" "CONSUMER_KEY" "CONSUMER_SECRET"
 
 generateDiff :: String -> [String] -> IO ()
 generateDiff cachePath r = do
@@ -56,14 +62,27 @@ github cachePath source username = do
 -- The 5000 user IDs get saved in a similar way to GitHub and our diff is
 -- concerned with the user IDs that change. After we know which IDs changed
 -- (i.e., were added or removed), we can look up the username and show those in
--- the diff. We can do this nicely and concurrently via Haxl, but this means
--- that our Haxl code is what becomes responsible for updating the cache file.
--- Alternatively, and perhaps better, we could maybe play with returning
--- @([String], [String], [String])@ from Haxl, where the first is a full new
--- list of follower IDs for us to write out to the cache, the second is a list
--- of new followers, and the third is a list of ex followers. The advantage of
--- this is that we can keep all the ugly file writing I/O together here, and
--- still have Haxl do the hard work because concurrency is actually useful here.
--- The disadvantage is that it might be hard to get Haxl to give us that triple.
-twitter :: String -> String -> String -> IO ()
-twitter = error "TODO"
+-- the diff.
+twitter ::
+  String -- ^ Directory containing the cache files
+  -> String -- ^ Name of the source
+  -> String -- ^ Username to look up
+  -> String -- ^ consumer key (twitter API)
+  -> String -- ^ consumer secret (twitter API)
+  -> IO ()
+twitter cachePath source username cKey cSecret = do
+  let filename = cachePath </> source ++ "_" ++ username
+
+  twitterState <- Twitter.initGlobalState 10 (T.pack cKey) (T.pack cSecret)
+  twEnv <- initEnv (stateSet twitterState stateEmpty) ()
+  putStrLn $ "Fetching " ++ source ++ " followers"
+
+  r <- runHaxl twEnv $ do
+    followers <- Twitter.getFollowers username
+    return . sort . map show $ followers
+
+  generateDiff filename r
+
+  writeFile filename $ intercalate "\n" r
+  appendFile filename "\n"
+  putStrLn $ "Stored " ++ filename
