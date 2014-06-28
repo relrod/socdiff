@@ -14,6 +14,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Web.Socdiff.Github.DataSource
                        Web.Socdiff.Github.Github
+                       Web.Socdiff.Twitter.Twitter
                        Web.Socdiff.Twitter.DataSource
 
   other-extensions:    OverloadedStrings
