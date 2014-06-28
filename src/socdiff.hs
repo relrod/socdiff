@@ -12,77 +12,92 @@ import qualified Web.Socdiff.Github.Github as Github
 import qualified Web.Socdiff.Twitter.DataSource as Twitter
 import qualified Web.Socdiff.Twitter.Twitter as Twitter
 
+data Followers =
+  GithubResult {
+      ghList   :: [String]
+    , username :: String
+    }
+  | TwitterResult {
+      twList   :: [Integer]
+    , username :: String
+    }
+
+data TwitterCreds = TwitterCreds { consumerKey :: String
+                                 , consumerSecret :: String
+                                 }
+
 main :: IO ()
 main = do
   home <- getHomeDirectory
   let cachePath = home </> ".socdiff_cache"
   createDirectoryIfMissing False cachePath
-  github cachePath "Github" "CodeBlock"
-  twitter cachePath "Twitter" "relrod6" "CONSUMER_KEY" "CONSUMER_SECRET"
+  followers <- getAllFollowersHackyDontRelyOnThis (TwitterCreds "KEY" "SECRET") "relrod6" "CodeBlock"
+  handleResults cachePath followers
 
-generateDiff :: String -> [String] -> IO ()
-generateDiff cachePath r = do
+generateDiff :: String -> String -> [String] -> IO ()
+generateDiff source cachePath r = do
   doesCacheExist <- doesFileExist cachePath
   if doesCacheExist
     then do
       oldCache <- fmap lines (readFile cachePath)
-      mapM_ putStrLn $ fmap ("- "++) (removals oldCache r)
-      mapM_ putStrLn $ fmap ("+ "++) (additions oldCache r)
+      mapM_ putStrLn $ fmap (("- " ++ source ++ ":") ++) (removals oldCache r)
+      mapM_ putStrLn $ fmap (("+ " ++ source ++ ":") ++) (additions oldCache r)
     else do
       putStrLn "No previous run detected. Can't generate a diff."
   where
     removals = (\\)
     additions = flip (\\)
 
-github :: String -> String -> String -> IO ()
-github cachePath source username = do
-  let filename = cachePath </> source ++ "_" ++ username
+-- | Get all followers concurrently! (In a very hacky way - don't rely on this.)
+-- We can probably split this into per-network functions like we had originally
+-- and just pass around both the 'Haxl.Core.StateStore', and the
+-- 'Haxl.Core.Monad.GenHaxl', modifying each of them as we go, then at the very
+-- end, we can call runHaxl and pass it the description we've built up.
+-- It will be much better than this, in any case.
+-- This is a hack, don't rely on it.
+getAllFollowersHackyDontRelyOnThis
+                :: TwitterCreds
+                -> String -- ^ Twitter username
+                -> String -- ^ Github username
+                -> IO [Followers]
+getAllFollowersHackyDontRelyOnThis (TwitterCreds cKey cSecret) tw gh = do
+  githubState <- Github.initGlobalState 2
+  twitterState <- Twitter.initGlobalState 2 (T.pack cKey) (T.pack cSecret)
+  let st =
+        stateSet twitterState .
+        stateSet githubState $
+        stateEmpty
+  env' <- initEnv st ()
 
-  githubState <- Github.initGlobalState 10
-  ghEnv <- initEnv (stateSet githubState stateEmpty) ()
-  putStrLn $ "Fetching " ++ source ++ " followers"
+  --putStrLn $ "Fetching " ++ source ++ " followers"
+  followers <- runHaxl env' $ do
+    githubFollowers <- fmap sort $ Github.getFollowers gh
+    twitterFollowers <- fmap sort $ Twitter.getFollowers tw
+    return $ [
+        GithubResult githubFollowers gh
+      , TwitterResult twitterFollowers tw
+      ]
 
-  r <- runHaxl ghEnv $ do
-    followers <- Github.getFollowers username
-    return $ sort followers
+  return followers
 
-  generateDiff filename r
+-- | Handle the resulting data fetches once they are all completed.
+handleResults :: String -> [Followers] -> IO ()
+handleResults cachePath fs = mapM_ process fs
+  where
+    filename source user = cachePath </> source ++ "_" ++ user
 
-  writeFile filename $ intercalate "\n" r
-  appendFile filename "\n"
-  putStrLn $ "Stored " ++ filename
+    process :: Followers -> IO ()
+    process (GithubResult xs user) = do
+      let filename' = filename "Github" user
+      generateDiff "Github" filename' xs
+      writeFile filename' $ intercalate "\n" xs
+      appendFile filename' "\n"
+      putStrLn $ "Stored " ++ filename'
 
--- Some thoughts about twitter implementation follow.
-
--- | For twitter, we have to do things a bit differently because their API is
--- annoying. Rather than storing usernames, we store user IDs. We can store up
--- to 5000 of them without needing to worry about pagination (which we currently
--- don't).
---
--- The 5000 user IDs get saved in a similar way to GitHub and our diff is
--- concerned with the user IDs that change. After we know which IDs changed
--- (i.e., were added or removed), we can look up the username and show those in
--- the diff.
-twitter ::
-  String -- ^ Directory containing the cache files
-  -> String -- ^ Name of the source
-  -> String -- ^ Username to look up
-  -> String -- ^ consumer key (twitter API)
-  -> String -- ^ consumer secret (twitter API)
-  -> IO ()
-twitter cachePath source username cKey cSecret = do
-  let filename = cachePath </> source ++ "_" ++ username
-
-  twitterState <- Twitter.initGlobalState 10 (T.pack cKey) (T.pack cSecret)
-  twEnv <- initEnv (stateSet twitterState stateEmpty) ()
-  putStrLn $ "Fetching " ++ source ++ " followers"
-
-  r <- runHaxl twEnv $ do
-    followers <- Twitter.getFollowers username
-    return . sort . map show $ followers
-
-  generateDiff filename r
-
-  writeFile filename $ intercalate "\n" r
-  appendFile filename "\n"
-  putStrLn $ "Stored " ++ filename
+    process (TwitterResult xs user) = do
+      let filename' = filename "Twitter" user
+          xs' = fmap show xs
+      generateDiff "Twitter" filename' xs'
+      writeFile filename' $ intercalate "\n" xs'
+      appendFile filename' "\n"
+      putStrLn $ "Stored " ++ filename'
