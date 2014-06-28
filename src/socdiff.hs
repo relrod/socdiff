@@ -24,6 +24,9 @@ generateDiff cachePath r = do
       mapM_ putStrLn $ fmap ("+ "++) (additions oldCache r)
     else do
       putStrLn "No previous run detected. Can't generate a diff."
+  where
+    removals = (\\)
+    additions = flip (\\)
 
 github :: String -> String -> String -> IO ()
 github cachePath source username = do
@@ -42,9 +45,3 @@ github cachePath source username = do
   writeFile filename $ intercalate "\n" r
   appendFile filename "\n"
   putStrLn $ "Stored " ++ filename
-
-removals :: [String] -> [String] -> [String]
-removals = (\\)
-
-additions :: [String] -> [String] -> [String]
-additions = flip (\\)
