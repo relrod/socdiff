@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Applicative
 import Data.List ((\\), intercalate, sort)
 import Data.Monoid (mempty)
 import Haxl.Core
@@ -56,7 +57,7 @@ generateDiff source cachePath r = do
       oldCache <- fmap lines (readFile cachePath)
       mapM_ putStrLn $ fmap (("- " ++ source ++ ":") ++) (removals oldCache r)
       mapM_ putStrLn $ fmap (("+ " ++ source ++ ":") ++) (additions oldCache r)
-    else do
+    else
       putStrLn "No previous run detected. Can't generate a diff."
   where
     removals = (\\)
@@ -64,19 +65,19 @@ generateDiff source cachePath r = do
 
 twitter' :: String -> [Followers] -> GenHaxl u [Followers]
 twitter' user followers = do
-  twitterFollowers <- fmap sort $ Twitter.getFollowers user
+  twitterFollowers <- sort <$> Twitter.getFollowers user
   return $ TwitterResult twitterFollowers user : followers
 
 github' :: String -> [Followers] -> GenHaxl u [Followers]
 github' user followers = do
-  githubFollowers <- fmap sort $ Github.getFollowers user
+  githubFollowers <- sort <$> Github.getFollowers user
   return $ GithubResult githubFollowers user : followers
 
 -- TODO: This can probably be cleaned up a bit.
 
 -- | Handle the resulting data fetches once they are all completed.
 handleResults :: String -> [Followers] -> IO ()
-handleResults cachePath fs = mapM_ process fs
+handleResults cachePath = mapM_ process
   where
     filename source user = cachePath </> source ++ "_" ++ user
 
