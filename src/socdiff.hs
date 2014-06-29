@@ -1,7 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import Data.List ((\\), intercalate, sort)
-import qualified Data.Text as T
+import Data.Monoid (mempty)
 import Haxl.Core
 import System.Directory (createDirectoryIfMissing, doesFileExist, getHomeDirectory)
 import System.FilePath ((</>))
@@ -22,17 +23,30 @@ data Followers =
     , username :: String
     }
 
-data TwitterCreds = TwitterCreds { consumerKey :: String
-                                 , consumerSecret :: String
-                                 }
-
 main :: IO ()
 main = do
   home <- getHomeDirectory
   let cachePath = home </> ".socdiff_cache"
   createDirectoryIfMissing False cachePath
-  followers <- getAllFollowersHackyDontRelyOnThis (TwitterCreds "KEY" "SECRET") "relrod6" "CodeBlock"
-  handleResults cachePath followers
+
+  -- Step one: Initialize the data store's state (give it login creds, etc)
+  twitterState <- Twitter.initGlobalState 2 "KEY" "SECRET" -- TODO: Config file
+  githubState  <- Github.initGlobalState 2
+
+  -- Step two: Add it to the StateStore so that we can actually use it
+  let st =
+        stateSet twitterState .
+        stateSet githubState $
+        stateEmpty
+
+  env' <- initEnv st ()
+
+  -- Step three: Perform the actual data fetching (concurrently)
+  allFollowers <- runHaxl env' $
+                    twitter' "relrod6" mempty >>=
+                    github' "CodeBlock"
+
+  handleResults cachePath allFollowers
 
 generateDiff :: String -> String -> [String] -> IO ()
 generateDiff source cachePath r = do
@@ -48,37 +62,17 @@ generateDiff source cachePath r = do
     removals = (\\)
     additions = flip (\\)
 
--- | Get all followers concurrently! (In a very hacky way - don't rely on this.)
--- We can probably split this into per-network functions like we had originally
--- and just pass around both the 'Haxl.Core.StateStore', and the
--- 'Haxl.Core.Monad.GenHaxl', modifying each of them as we go, then at the very
--- end, we can call runHaxl and pass it the description we've built up.
--- It will be much better than this, in any case.
--- This is a hack, don't rely on it.
-getAllFollowersHackyDontRelyOnThis
-                :: TwitterCreds
-                -> String -- ^ Twitter username
-                -> String -- ^ Github username
-                -> IO [Followers]
-getAllFollowersHackyDontRelyOnThis (TwitterCreds cKey cSecret) tw gh = do
-  githubState <- Github.initGlobalState 2
-  twitterState <- Twitter.initGlobalState 2 (T.pack cKey) (T.pack cSecret)
-  let st =
-        stateSet twitterState .
-        stateSet githubState $
-        stateEmpty
-  env' <- initEnv st ()
+twitter' :: String -> [Followers] -> GenHaxl u [Followers]
+twitter' user followers = do
+  twitterFollowers <- fmap sort $ Twitter.getFollowers user
+  return $ TwitterResult twitterFollowers user : followers
 
-  --putStrLn $ "Fetching " ++ source ++ " followers"
-  followers <- runHaxl env' $ do
-    githubFollowers <- fmap sort $ Github.getFollowers gh
-    twitterFollowers <- fmap sort $ Twitter.getFollowers tw
-    return $ [
-        GithubResult githubFollowers gh
-      , TwitterResult twitterFollowers tw
-      ]
+github' :: String -> [Followers] -> GenHaxl u [Followers]
+github' user followers = do
+  githubFollowers <- fmap sort $ Github.getFollowers user
+  return $ GithubResult githubFollowers user : followers
 
-  return followers
+-- TODO: This can probably be cleaned up a bit.
 
 -- | Handle the resulting data fetches once they are all completed.
 handleResults :: String -> [Followers] -> IO ()
