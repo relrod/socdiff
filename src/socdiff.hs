@@ -36,7 +36,7 @@ main = do
   createDirectoryIfMissing False cachePath
 
   -- Step one: Initialize the data store's state (give it login creds, etc)
-  twitterState <- Twitter.initGlobalState 2 twitterKey twitterSecret -- TODO: Config file
+  twitterState <- Twitter.initGlobalState 2 twitterKey twitterSecret
   githubState  <- Github.initGlobalState 2
 
   -- Step two: Add it to the StateStore so that we can actually use it
