@@ -2,7 +2,9 @@
 module Main where
 
 import Control.Applicative
+import qualified Data.Configurator as Cfg
 import Data.List ((\\), intercalate, sort)
+import qualified Data.Text as T
 import Haxl.Core
 import System.Directory (createDirectoryIfMissing, doesFileExist, getHomeDirectory)
 import System.FilePath ((</>))
@@ -25,12 +27,16 @@ data Followers =
 
 main :: IO ()
 main = do
+  config <- Cfg.load [Cfg.Required "socdiff.cfg"]
+  twitterKey <- (Cfg.require config "twitter.key") :: IO T.Text
+  twitterSecret <- (Cfg.require config "twitter.secret") :: IO T.Text
+
   home <- getHomeDirectory
   let cachePath = home </> ".socdiff_cache"
   createDirectoryIfMissing False cachePath
 
   -- Step one: Initialize the data store's state (give it login creds, etc)
-  twitterState <- Twitter.initGlobalState 2 "Ve9l0xYXsNM8pIPd92hhA" "LO5rxmTzJeMA3UvRD0NTSdeKS2shZK23LcNWSBlBo" -- TODO: Config file
+  twitterState <- Twitter.initGlobalState 2 twitterKey twitterSecret -- TODO: Config file
   githubState  <- Github.initGlobalState 2
 
   -- Step two: Add it to the StateStore so that we can actually use it
