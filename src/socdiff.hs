@@ -3,7 +3,6 @@ module Main where
 
 import Control.Applicative
 import Data.List ((\\), intercalate, sort)
-import Data.Monoid (mempty)
 import Haxl.Core
 import System.Directory (createDirectoryIfMissing, doesFileExist, getHomeDirectory)
 import System.FilePath ((</>))
@@ -31,7 +30,7 @@ main = do
   createDirectoryIfMissing False cachePath
 
   -- Step one: Initialize the data store's state (give it login creds, etc)
-  twitterState <- Twitter.initGlobalState 2 "KEY" "SECRET" -- TODO: Config file
+  twitterState <- Twitter.initGlobalState 2 "Ve9l0xYXsNM8pIPd92hhA" "LO5rxmTzJeMA3UvRD0NTSdeKS2shZK23LcNWSBlBo" -- TODO: Config file
   githubState  <- Github.initGlobalState 2
 
   -- Step two: Add it to the StateStore so that we can actually use it
@@ -44,7 +43,8 @@ main = do
 
   -- Step three: Perform the actual data fetching (concurrently)
   allFollowers <- runHaxl env' $
-                    twitter' "relrod6" mempty >>=
+                    (\x y -> [x, y]) <$>
+                    twitter' "relrod6" <*>
                     github' "CodeBlock"
 
   handleResults cachePath allFollowers
@@ -63,15 +63,15 @@ generateDiff source cachePath r = do
     removals = (\\)
     additions = flip (\\)
 
-twitter' :: String -> [Followers] -> GenHaxl u [Followers]
-twitter' user followers = do
+twitter' :: String -> GenHaxl u Followers
+twitter' user = do
   twitterFollowers <- sort <$> Twitter.getFollowers user
-  return $ TwitterResult twitterFollowers user : followers
+  return $ TwitterResult twitterFollowers user
 
-github' :: String -> [Followers] -> GenHaxl u [Followers]
-github' user followers = do
+github' :: String -> GenHaxl u Followers
+github' user = do
   githubFollowers <- sort <$> Github.getFollowers user
-  return $ GithubResult githubFollowers user : followers
+  return $ GithubResult githubFollowers user
 
 -- TODO: This can probably be cleaned up a bit.
 
