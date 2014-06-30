@@ -48,12 +48,12 @@ main = do
   env' <- initEnv st ()
 
   -- Step three: Perform the actual data fetching (concurrently)
-  allFollowers <- runHaxl env' $
-                    (\x y -> [x, y]) <$>
-                    twitter' "relrod6" <*>
-                    github' "CodeBlock"
+  (twitterFollowers, githubFollowers) <-
+    runHaxl env' $ (,) <$>
+      twitter' "relrod6" <*>
+      github' "CodeBlock"
 
-  handleResults cachePath allFollowers
+  handleResults cachePath [twitterFollowers, githubFollowers]
 
 generateDiff :: String -> String -> [String] -> IO ()
 generateDiff source cachePath r = do
