@@ -28,8 +28,8 @@ data Followers =
 main :: IO ()
 main = do
   config <- Cfg.load [Cfg.Required "socdiff.cfg"]
-  twitterKey <- (Cfg.require config "twitter.key") :: IO T.Text
-  twitterSecret <- (Cfg.require config "twitter.secret") :: IO T.Text
+  twitterKey <- Cfg.require config "twitter.key" :: IO T.Text
+  twitterSecret <- Cfg.require config "twitter.secret" :: IO T.Text
 
   home <- getHomeDirectory
   let cachePath = home </> ".socdiff_cache"
@@ -53,21 +53,17 @@ main = do
       twitter' "relrod6" <*>
       github' "CodeBlock"
 
-  handleResults cachePath [twitterFollowers, githubFollowers]
+  handleResults cachePath env' [twitterFollowers, githubFollowers]
 
-generateDiff :: String -> String -> [String] -> IO ()
-generateDiff source cachePath r = do
+generateDiff :: String -> String -> [String] -> [String] -> IO ()
+generateDiff source cachePath added removed = do
   doesCacheExist <- doesFileExist cachePath
   if doesCacheExist
     then do
-      oldCache <- fmap lines (readFile cachePath)
-      mapM_ putStrLn $ fmap (("- " ++ source ++ ":") ++) (removals oldCache r)
-      mapM_ putStrLn $ fmap (("+ " ++ source ++ ":") ++) (additions oldCache r)
+      mapM_ putStrLn $ fmap (("- " ++ source ++ ":") ++) removed
+      mapM_ putStrLn $ fmap (("+ " ++ source ++ ":") ++) added
     else
       putStrLn "No previous run detected. Can't generate a diff."
-  where
-    removals = (\\)
-    additions = flip (\\)
 
 twitter' :: String -> GenHaxl u Followers
 twitter' user = do
@@ -82,23 +78,31 @@ github' user = do
 -- TODO: This can probably be cleaned up a bit.
 
 -- | Handle the resulting data fetches once they are all completed.
-handleResults :: String -> [Followers] -> IO ()
-handleResults cachePath = mapM_ process
+handleResults :: String -> Env u -> [Followers] -> IO ()
+handleResults cachePath env' = mapM_ process
   where
     filename source user = cachePath </> source ++ "_" ++ user
+    removals = (\\)
+    additions = flip (\\)
 
     process :: Followers -> IO ()
     process (GithubResult xs user) = do
       let filename' = filename "Github" user
-      generateDiff "Github" filename' xs
+      oldCache <- fmap lines (readFile filename')
+      generateDiff "Github" filename' (additions oldCache xs) (removals oldCache xs)
       writeFile filename' $ intercalate "\n" xs
       appendFile filename' "\n"
       putStrLn $ "Stored " ++ filename'
 
     process (TwitterResult xs user) = do
       let filename' = filename "Twitter" user
-          xs' = fmap show xs
-      generateDiff "Twitter" filename' xs'
+          xs'       = show <$> xs
+      oldCache <- fmap lines (readFile filename')
+      (added, removed) <-
+        runHaxl env' $ (,) <$>
+          Twitter.getUsernames (read <$> additions oldCache xs') <*>
+          Twitter.getUsernames (read <$> removals oldCache xs')
+      generateDiff "Twitter" filename' (T.unpack <$> added) (T.unpack <$> removed)
       writeFile filename' $ intercalate "\n" xs'
       appendFile filename' "\n"
       putStrLn $ "Stored " ++ filename'

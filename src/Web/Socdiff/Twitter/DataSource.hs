@@ -18,6 +18,7 @@ import Data.Aeson.Lens
 import qualified Data.ByteString.Char8 as C8
 import Data.Hashable
 import Data.List (intercalate, sort)
+import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Typeable
@@ -82,6 +83,7 @@ fetchReq (GetFollowerIDs u) bearerToken = do
   resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/followers/ids.json?screen_name=" ++ u)
   return $ sort $ resp ^.. responseBody . key "ids" . values . _Integer
 
+fetchReq (GetUsernames []) _ = return mempty
 fetchReq (GetUsernames uids) bearerToken = do
   let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
       uids' = intercalate "," $ fmap show uids
