@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Your Instagram Access Token</title>
+    <style>
+      body {
+        margin-left: 30px;
+        font-family: sans-serif;
+      }
+      pre {
+        font-size: 2em;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Your Instagram Access Token Is...</h2>
+    <pre id="token"></pre>
+    <p>Add it to your socdiff config in the form:</p>
+    <pre id="conf">instagram {
+    access_token = "the above string"
+}</pre>
+    <p>and hope they don't expire it for a while.</p>
+    <script>
+      document.getElementById("token").innerHTML = window.location.hash.split('=')[1];
+      document.getElementById("conf").innerHTML = document.getElementById("conf").innerHTML.replace('the above string', window.location.hash.split('=')[1]);
+    </script>
+  </body>
+</html>
