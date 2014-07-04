@@ -101,12 +101,18 @@ handleResults :: String -> Env u -> [Followers] -> IO ()
 handleResults cachePath env' = mapM_ process
   where
     filename source user = cachePath </> source ++ "_" ++ user
+    createIfMissing f = do
+      doesCacheExist <- doesFileExist f
+      if doesCacheExist
+        then return ()
+        else writeFile f ""
     removals = (\\)
     additions = flip (\\)
 
     process :: Followers -> IO ()
     process (GithubResult xs user) = do
       let filename' = filename "Github" user
+      createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
       generateDiff "Github" filename' (additions oldCache xs) (removals oldCache xs)
       writeFile filename' $ intercalate "\n" xs
@@ -115,6 +121,7 @@ handleResults cachePath env' = mapM_ process
 
     process (InstagramResult xs user) = do
       let filename' = filename "Instagram" user
+      createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
       generateDiff "Instagram" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
       writeFile filename' $ intercalate "\n" $ T.unpack <$> xs
@@ -124,6 +131,7 @@ handleResults cachePath env' = mapM_ process
     process (TwitterResult xs user) = do
       let filename' = filename "Twitter" user
           xs'       = show <$> xs
+      createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
       (added, removed) <-
         runHaxl env' $ (,) <$>
