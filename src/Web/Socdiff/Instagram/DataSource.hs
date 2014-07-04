@@ -44,13 +44,13 @@ instance DataSourceName InstagramReq where
   dataSourceName _ = "Instagram"
 
 instance DataSource u InstagramReq where
-  fetch = twitterFetch
+  fetch = instagramFetch
 
 initGlobalState :: Int -> T.Text -> T.Text -> IO (State InstagramReq)
 initGlobalState threads cKey cSecret  = return $ InstagramState threads cKey cSecret
 
-twitterFetch :: State InstagramReq -> Flags -> u -> [BlockedFetch InstagramReq] -> PerformFetch
-twitterFetch InstagramState{..} _flags _user bfs =
+instagramFetch :: State InstagramReq -> Flags -> u -> [BlockedFetch InstagramReq] -> PerformFetch
+instagramFetch InstagramState{..} _flags _user bfs =
   AsyncFetch $ \inner -> do
     sem <- newQSem numThreads
     asyncs <- mapM (fetchAsync accessToken sem) bfs
