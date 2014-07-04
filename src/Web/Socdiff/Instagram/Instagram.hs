@@ -5,5 +5,5 @@ import Haxl.Core
 import Web.Socdiff.Instagram.DataSource
 
 -- | Get a list of followers for the given username
-getUsernames :: T.Text -> GenHaxl u [(T.Text, T.Text)]
-getUsernames u = dataFetch (GetFollowerUsernames u)
+getFollowers :: T.Text -> GenHaxl u [(T.Text, T.Text)]
+getFollowers u = dataFetch (GetFollowerUsernames u)

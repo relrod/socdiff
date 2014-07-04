@@ -38,7 +38,7 @@ instance Hashable (InstagramReq a) where
 instance StateKey InstagramReq where
   data State InstagramReq = InstagramState { numThreads :: Int
                                            , accessToken :: T.Text
-                                           , username :: T.Text }
+                                           }
 
 instance DataSourceName InstagramReq where
   dataSourceName _ = "Instagram"
@@ -46,8 +46,8 @@ instance DataSourceName InstagramReq where
 instance DataSource u InstagramReq where
   fetch = instagramFetch
 
-initGlobalState :: Int -> T.Text -> T.Text -> IO (State InstagramReq)
-initGlobalState threads cKey cSecret  = return $ InstagramState threads cKey cSecret
+initGlobalState :: Int -> T.Text -> IO (State InstagramReq)
+initGlobalState threads token  = return $ InstagramState threads token
 
 instagramFetch :: State InstagramReq -> Flags -> u -> [BlockedFetch InstagramReq] -> PerformFetch
 instagramFetch InstagramState{..} _flags _user bfs =
