@@ -20,7 +20,7 @@ import qualified Web.Socdiff.Twitter.Twitter as Twitter
 
 data Followers =
   GithubResult {
-      ghList   :: [String]
+      ghList   :: [T.Text]
     , username :: String
     }
   | TwitterResult {
@@ -79,10 +79,10 @@ generateDiff source cachePath added removed = do
     else
       putStrLn "No previous run detected. Can't generate a diff."
 
-github' :: String -> GenHaxl u Followers
+github' :: T.Text -> GenHaxl u Followers
 github' user = do
   githubFollowers <- sort <$> Github.getFollowers user
-  return $ GithubResult githubFollowers user
+  return $ GithubResult githubFollowers (T.unpack user)
 
 instagram' :: String -> GenHaxl u Followers
 instagram' user = do
@@ -114,8 +114,8 @@ handleResults cachePath env' = mapM_ process
       let filename' = filename "Github" user
       createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
-      generateDiff "Github" filename' (additions oldCache xs) (removals oldCache xs)
-      writeFile filename' $ intercalate "\n" xs
+      generateDiff "Github" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
+      writeFile filename' $ intercalate "\n" $ T.unpack <$> xs
       appendFile filename' "\n"
       putStrLn $ "Stored " ++ filename'
 

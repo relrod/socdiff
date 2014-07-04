@@ -9,18 +9,20 @@
 
 module Web.Socdiff.Github.DataSource where
 
+import Control.Applicative
 import Control.Concurrent.Async
 import Control.Concurrent.QSem
 import Control.Exception
 import Control.Monad.IO.Class
 import Data.Hashable
+import qualified Data.Text as T
 import Data.Typeable
 import Github.Users.Followers
 
 import Haxl.Core
 
 data GithubReq a where
-   GetFollowers :: String -> GithubReq [String]
+   GetFollowers :: T.Text -> GithubReq [T.Text]
   deriving Typeable
 
 deriving instance Eq (GithubReq a)
@@ -61,5 +63,5 @@ fetchAsync sem (BlockedFetch req rvar) =
 
 fetchReq :: GithubReq a -> IO a
 fetchReq (GetFollowers u) = do
-  Right followers <- usersFollowing u
-  return $ map githubOwnerLogin followers
+  Right followers <- usersFollowing (T.unpack u)
+  return $ T.pack . githubOwnerLogin <$> followers
