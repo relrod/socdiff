@@ -2,6 +2,7 @@
 module Main where
 
 import Control.Applicative
+import Control.Monad
 import qualified Data.Configurator as Cfg
 import Data.List ((\\), intercalate, sort)
 import qualified Data.Text as T
@@ -103,10 +104,16 @@ handleResults cachePath env' = mapM_ process
     filename source user = cachePath </> source ++ "_" ++ user
     createIfMissing f = do
       doesCacheExist <- doesFileExist f
-      if doesCacheExist
-        then return ()
-        else writeFile f ""
+      unless doesCacheExist $ writeFile f ""
+
+    writeViaText filename' xs =
+      do
+        writeFile filename' $ intercalate "\n" $ T.unpack <$> xs
+        appendFile filename' "\n"
+        putStrLn $ "Stored " ++ filename'
+
     removals = (\\)
+
     additions = flip (\\)
 
     process :: Followers -> IO ()
@@ -115,18 +122,14 @@ handleResults cachePath env' = mapM_ process
       createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
       generateDiff "Github" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
-      writeFile filename' $ intercalate "\n" $ T.unpack <$> xs
-      appendFile filename' "\n"
-      putStrLn $ "Stored " ++ filename'
+      writeViaText filename' xs
 
     process (InstagramResult xs user) = do
       let filename' = filename "Instagram" user
       createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
       generateDiff "Instagram" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
-      writeFile filename' $ intercalate "\n" $ T.unpack <$> xs
-      appendFile filename' "\n"
-      putStrLn $ "Stored " ++ filename'
+      writeViaText filename' xs
 
     process (TwitterResult xs user) = do
       let filename' = filename "Twitter" user
