@@ -5,7 +5,7 @@ import Haxl.Core
 import Web.Socdiff.Twitter.DataSource
 
 -- | Fetch a list of follower *IDs* for the given username
-getFollowers :: String -> GenHaxl u [Integer]
+getFollowers :: T.Text -> GenHaxl u [Integer]
 getFollowers u = dataFetch (GetFollowerIDs u)
 
 -- | Get a list of usernames for the given list of user IDs

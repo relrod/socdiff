@@ -16,18 +16,20 @@ import Control.Monad.IO.Class
 import Control.Lens
 import Data.Aeson.Lens
 import qualified Data.ByteString.Char8 as C8
+import qualified Data.ByteString.Lazy.Char8 as CL8
 import Data.Hashable
 import Data.List (intercalate, sort)
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Typeable
+import qualified Network.HTTP.Client as HTTPClient
 import Network.Wreq
 
 import Haxl.Core
 
 data TwitterReq a where
-   GetFollowerIDs :: String -> TwitterReq [Integer]
+   GetFollowerIDs :: T.Text -> TwitterReq [Integer]
    GetUsernames :: [Integer] -> TwitterReq [T.Text]
   deriving Typeable
 
@@ -80,12 +82,16 @@ getToken consumerKey consumerSecret = do
 fetchReq :: TwitterReq a -> T.Text -> IO a
 fetchReq (GetFollowerIDs u) bearerToken = do
   let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
-  resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/followers/ids.json?screen_name=" ++ u)
+  resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/followers/ids.json?screen_name=" ++ T.unpack u)
   return $ sort $ resp ^.. responseBody . key "ids" . values . _Integer
 
 fetchReq (GetUsernames []) _ = return mempty
 fetchReq (GetUsernames uids) bearerToken = do
   let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
       uids' = intercalate "," $ fmap show uids
-  resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/users/lookup.json?user_id=" ++ uids')
-  return $ sort $ resp ^.. responseBody . values . key "screen_name" . _String
+  resp <- Control.Exception.try $
+            getWith oAuthOpts ("https://api.twitter.com/1.1/users/lookup.json?user_id=" ++ uids')
+            :: IO (Either HTTPClient.HttpException (Response CL8.ByteString))
+  return $ case resp of
+    Right x -> sort $ x ^.. responseBody . values . key "screen_name" . _String
+    Left _ -> mempty

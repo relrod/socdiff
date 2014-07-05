@@ -90,10 +90,10 @@ instagram' user = do
   instagramFollowers <- Instagram.getFollowers (T.pack user)
   return $ InstagramResult (sort (fst <$> instagramFollowers)) user
 
-twitter' :: String -> GenHaxl u Followers
+twitter' :: T.Text -> GenHaxl u Followers
 twitter' user = do
   twitterFollowers <- sort <$> Twitter.getFollowers user
-  return $ TwitterResult twitterFollowers user
+  return $ TwitterResult twitterFollowers (T.unpack user)
 
 -- TODO: This can probably be cleaned up a bit.
 
