@@ -22,15 +22,15 @@ import qualified Web.Socdiff.Twitter.Twitter as Twitter
 data Followers =
   GithubResult {
       ghList   :: [T.Text]
-    , username :: String
+    , username :: T.Text
     }
   | TwitterResult {
       twList   :: [Integer]
-    , username :: String
+    , username :: T.Text
     }
   | InstagramResult {
       instagramList :: [T.Text]
-    , username      :: String
+    , username      :: T.Text
     }
 
 main :: IO ()
@@ -66,7 +66,7 @@ main = do
     runHaxl env' $ (,,) <$>
       twitter' "relrod6" <*>
       github' "CodeBlock" <*>
-      instagram' (T.unpack instagramUser)
+      instagram' instagramUser
 
   handleResults cachePath env' [twitterFollowers, githubFollowers, instagramFollowers]
 
@@ -83,17 +83,17 @@ generateDiff source cachePath added removed = do
 github' :: T.Text -> GenHaxl u Followers
 github' user = do
   githubFollowers <- sort <$> Github.getFollowers user
-  return $ GithubResult githubFollowers (T.unpack user)
+  return $ GithubResult githubFollowers user
 
-instagram' :: String -> GenHaxl u Followers
+instagram' :: T.Text -> GenHaxl u Followers
 instagram' user = do
-  instagramFollowers <- Instagram.getFollowers (T.pack user)
+  instagramFollowers <- Instagram.getFollowers user
   return $ InstagramResult (sort (fst <$> instagramFollowers)) user
 
 twitter' :: T.Text -> GenHaxl u Followers
 twitter' user = do
   twitterFollowers <- sort <$> Twitter.getFollowers user
-  return $ TwitterResult twitterFollowers (T.unpack user)
+  return $ TwitterResult twitterFollowers user
 
 -- TODO: This can probably be cleaned up a bit.
 
@@ -118,21 +118,21 @@ handleResults cachePath env' = mapM_ process
 
     process :: Followers -> IO ()
     process (GithubResult xs user) = do
-      let filename' = filename "Github" user
+      let filename' = filename "Github" (T.unpack user)
       createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
       generateDiff "Github" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
       writeViaText filename' xs
 
     process (InstagramResult xs user) = do
-      let filename' = filename "Instagram" user
+      let filename' = filename "Instagram" (T.unpack user)
       createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
       generateDiff "Instagram" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
       writeViaText filename' xs
 
     process (TwitterResult xs user) = do
-      let filename' = filename "Twitter" user
+      let filename' = filename "Twitter" (T.unpack user)
           xs'       = show <$> xs
       createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
