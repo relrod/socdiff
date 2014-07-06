@@ -12,12 +12,14 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Web.Socdiff.Github.DataSource
+  exposed-modules:     Web.Socdiff.Facebook.DataSource
+                       Web.Socdiff.Facebook.Facebook
+                       Web.Socdiff.Github.DataSource
                        Web.Socdiff.Github.Github
-                       Web.Socdiff.Instagram.Instagram
                        Web.Socdiff.Instagram.DataSource
-                       Web.Socdiff.Twitter.Twitter
+                       Web.Socdiff.Instagram.Instagram
                        Web.Socdiff.Twitter.DataSource
+                       Web.Socdiff.Twitter.Twitter
 
   other-extensions:    OverloadedStrings
                      , StandaloneDeriving
@@ -30,11 +32,16 @@ library
   build-depends:       async >= 2 && < 3
                      , base >= 4 && < 5
                      , bytestring >= 0.10 && < 1
-                     , hashable >= 1.2 && < 1.3
+                     , conduit >= 1.1 && < 1.2
+                     , fb >= 1 && < 2
                      , github >= 0.8 && < 1
+                     , hashable >= 1.2 && < 1.3
                      , haxl >= 0.1.0.0 && < 0.2
                      , http-client >= 0.3 && < 1
+                     , http-client-tls >= 0.2 && < 1
+                     , http-conduit >= 2.1 && < 3
                      , lens >= 4.0 && < 5
+                     , resourcet >= 1.1 && < 1.2
                      , text >= 1 && < 2
                      , transformers >= 0.4 && < 1
                      , wreq >= 0.1.0.1 && < 0.2
@@ -45,13 +52,30 @@ library
 
 executable socdiff
   build-depends:       base >= 4 && < 5
+                     , conduit >= 1.1 && < 2
                      , configurator >= 0.2 && < 1
                      , directory >= 1.2 && < 2
+                     , fb >= 1 && < 2
                      , filepath >= 1.3 && < 2
                      , haxl >= 0.1.0.0 && < 0.2
+                     , http-conduit >= 2 && < 3
                      , socdiff
                      , text >= 1 && < 2
+                     , time >= 1 && < 2
 
   main-is:             src/socdiff.hs
+  ghc-options:         -Wall -fno-warn-name-shadowing
+  default-language:    Haskell2010
+
+executable socdiff-facebook-token
+  build-depends:       base >= 4 && < 5
+                     , bytestring >= 0.10 && < 1
+                     , conduit >= 1.1 && < 2
+                     , configurator >= 0.2 && < 1
+                     , fb >= 1 && < 2
+                     , http-conduit >= 2 && < 3
+                     , text >= 1 && < 2
+
+  main-is:             src/getFacebookToken.hs
   ghc-options:         -Wall -fno-warn-name-shadowing
   default-language:    Haskell2010

@@ -4,11 +4,18 @@ module Main where
 import Control.Applicative
 import Control.Monad
 import qualified Data.Configurator as Cfg
+import qualified Data.Conduit as C
 import Data.List ((\\), intercalate, sort)
 import qualified Data.Text as T
+import Data.Time.Clock
 import Haxl.Core
+import qualified Network.HTTP.Conduit as H
 import System.Directory (createDirectoryIfMissing, doesFileExist, getHomeDirectory)
 import System.FilePath ((</>))
+
+import qualified Facebook as Facebook
+import qualified Web.Socdiff.Facebook.DataSource as Facebook
+import qualified Web.Socdiff.Facebook.Facebook as Facebook
 
 import qualified Web.Socdiff.Github.DataSource as Github
 import qualified Web.Socdiff.Github.Github as Github
@@ -20,7 +27,11 @@ import qualified Web.Socdiff.Twitter.DataSource as Twitter
 import qualified Web.Socdiff.Twitter.Twitter as Twitter
 
 data Followers =
-  GithubResult {
+    FacebookResult {
+      fbList   :: [T.Text]
+    , username :: T.Text
+    }
+  | GithubResult {
       ghList   :: [T.Text]
     , username :: T.Text
     }
@@ -37,10 +48,20 @@ main :: IO ()
 main = do
   config <- Cfg.load [Cfg.Required "socdiff.cfg"]
 
-  instagramToken <- Cfg.require config "instagram.access_token" :: IO T.Text
-  instagramUser <- Cfg.require config "instagram.username" :: IO T.Text
+  fbUser   <- Cfg.require config "facebook.userid" :: IO T.Text
+  fbName   <- Cfg.require config "facebook.app_name" :: IO T.Text
+  fbId     <- Cfg.require config "facebook.id" :: IO T.Text
+  fbSecret <- Cfg.require config "facebook.secret" :: IO T.Text
+  fbToken  <- Cfg.require config "facebook.token" :: IO T.Text
 
-  twitterKey <- Cfg.require config "twitter.key" :: IO T.Text
+  now <- getCurrentTime
+  let fbCreds = Facebook.Credentials fbName fbId fbSecret
+      fbUAT   = Facebook.UserAccessToken (Facebook.Id fbUser) fbToken now
+
+  instagramToken <- Cfg.require config "instagram.access_token" :: IO T.Text
+  instagramUser  <- Cfg.require config "instagram.username" :: IO T.Text
+
+  twitterKey    <- Cfg.require config "twitter.key" :: IO T.Text
   twitterSecret <- Cfg.require config "twitter.secret" :: IO T.Text
 
   home <- getHomeDirectory
@@ -48,12 +69,14 @@ main = do
   createDirectoryIfMissing False cachePath
 
   -- Step one: Initialize the data store's state (give it login creds, etc)
-  twitterState    <- Twitter.initGlobalState 2 twitterKey twitterSecret
-  instagramState  <- Instagram.initGlobalState 2 instagramToken
+  facebookState   <- Facebook.initGlobalState 2 fbCreds fbUAT
   githubState     <- Github.initGlobalState 2
+  instagramState  <- Instagram.initGlobalState 2 instagramToken
+  twitterState    <- Twitter.initGlobalState 2 twitterKey twitterSecret
 
   -- Step two: Add it to the StateStore so that we can actually use it
   let st =
+        stateSet facebookState .
         stateSet githubState .
         stateSet instagramState .
         stateSet twitterState $
@@ -62,13 +85,17 @@ main = do
   env' <- initEnv st ()
 
   -- Step three: Perform the actual data fetching (concurrently)
-  (twitterFollowers, githubFollowers, instagramFollowers) <-
-    runHaxl env' $ (,,) <$>
-      twitter' "relrod6" <*>
+  (fbFriends, twitterFollowers, githubFollowers, instagramFollowers) <-
+    runHaxl env' $ (,,,) <$>
+      facebook' fbUser <*>
       github' "CodeBlock" <*>
+      twitter' "relrod6" <*>
       instagram' instagramUser
 
-  handleResults cachePath env' [twitterFollowers, githubFollowers, instagramFollowers]
+  handleResults cachePath env' [ fbFriends
+                               , githubFollowers
+                               , instagramFollowers
+                               , twitterFollowers]
 
 generateDiff :: String -> String -> [String] -> [String] -> IO ()
 generateDiff source cachePath added removed = do
@@ -79,6 +106,11 @@ generateDiff source cachePath added removed = do
       mapM_ putStrLn $ fmap (("+ " ++ source ++ ":") ++) added
     else
       putStrLn "No previous run detected. Can't generate a diff."
+
+facebook' :: T.Text -> GenHaxl u Followers
+facebook' user = do
+  friends <- sort <$> Facebook.getFriends user
+  return $ FacebookResult (Facebook.getNames friends) user
 
 github' :: T.Text -> GenHaxl u Followers
 github' user = do
@@ -117,6 +149,13 @@ handleResults cachePath env' = mapM_ process
     additions = flip (\\)
 
     process :: Followers -> IO ()
+    process (FacebookResult xs user) = do
+      let filename' = filename "Facebook" (T.unpack user)
+      createIfMissing filename'
+      oldCache <- fmap lines (readFile filename')
+      generateDiff "Facebook" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
+      writeViaText filename' xs
+
     process (GithubResult xs user) = do
       let filename' = filename "Github" (T.unpack user)
       createIfMissing filename'
