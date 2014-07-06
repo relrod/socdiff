@@ -10,6 +10,8 @@ Facebook's awesome Haxl library, and this is what happened. :)
 Simply create a Haxl data source for each network that you wish to track, and
 reference it in the included runner program.
 
+API docs: http://codeblock.github.io/socdiff/api/
+
 ### Examples of running it
 
 #### After following myself with a test account
