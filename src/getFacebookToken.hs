@@ -5,7 +5,7 @@ module Main where
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.Configurator as Cfg
 import qualified Data.Text as T
-import qualified Facebook as Facebook
+import qualified Facebook
 import qualified Network.HTTP.Conduit as H
 import System.IO
 

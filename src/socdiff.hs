@@ -4,16 +4,14 @@ module Main where
 import Control.Applicative
 import Control.Monad
 import qualified Data.Configurator as Cfg
-import qualified Data.Conduit as C
 import Data.List ((\\), intercalate, sort)
 import qualified Data.Text as T
 import Data.Time.Clock
 import Haxl.Core
-import qualified Network.HTTP.Conduit as H
 import System.Directory (createDirectoryIfMissing, doesFileExist, getHomeDirectory)
 import System.FilePath ((</>))
 
-import qualified Facebook as Facebook
+import qualified Facebook
 import qualified Web.Socdiff.Facebook.DataSource as Facebook
 import qualified Web.Socdiff.Facebook.Facebook as Facebook
 
@@ -110,7 +108,7 @@ generateDiff source cachePath added removed = do
 facebook' :: T.Text -> GenHaxl u Followers
 facebook' user = do
   friends <- sort <$> Facebook.getFriends user
-  return $ FacebookResult (Facebook.getNames friends) user
+  return $ FacebookResult friends user
 
 github' :: T.Text -> GenHaxl u Followers
 github' user = do

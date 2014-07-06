@@ -12,10 +12,15 @@ module Web.Socdiff.Facebook.DataSource where
 import Control.Concurrent.Async
 import Control.Concurrent.QSem
 import Control.Exception
+import Control.Lens
 import Control.Monad.Trans.Resource
+import Data.Aeson
+import Data.Aeson.Lens
 import Data.Conduit
-import Data.Conduit.List hiding (mapM, mapM_)
+import Data.Conduit.List hiding (map, mapM, mapM_)
 import Data.Hashable
+import Data.Monoid
+import qualified Data.Text as T
 import Data.Typeable
 import Facebook
 import Haxl.Core
@@ -23,7 +28,7 @@ import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Conduit
 
 data FacebookReq a where
-   GetFriends :: UserId -> FacebookReq [Friend]
+   GetFriends :: UserId -> FacebookReq [T.Text]
   deriving Typeable
 
 deriving instance Eq (FacebookReq a)
@@ -81,7 +86,8 @@ fetchReq
   :: UserAccessToken
   -> FacebookReq a
   -> FacebookT Auth (ResourceT IO) a
-fetchReq tok (GetFriends uid) = do
-  f <- getUserFriends uid [] tok
+fetchReq tok (GetFriends (Id uid)) = do
+  f <- getObject ("/" <> uid <> "/taggable_friends") [] (Just tok)
   source <- fetchAllNextPages f
-  source $$ consume
+  resp <- source $$ consume :: FacebookT Auth (ResourceT IO) [Value]
+  return $ map (\x -> x ^. key "name" . _String) resp
