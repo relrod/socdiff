@@ -7,6 +7,7 @@ import qualified Data.Configurator as Cfg
 import qualified Data.Text as T
 import qualified Facebook as Facebook
 import qualified Network.HTTP.Conduit as H
+import System.IO
 
 -- | Facebook's API is annoying too (I am sensing a pattern here: oAuth is
 -- annoying). The workflow works like this (and is only valid for 60 days):
@@ -34,6 +35,8 @@ main = do
   url <- H.withManager $ \m -> Facebook.runFacebookT creds m (Facebook.getUserAccessTokenStep1
                                                               "https://codeblock.github.io/socdiff/facebook.html"
                                                               ["user_friends", "public_profile"])
+
+  hSetBuffering stdout NoBuffering
   putStrLn "Please go to this url in a *browser*, and paste the resulting code below:"
   putStrLn (T.unpack url)
   putStr "Code: "
