@@ -44,9 +44,14 @@ main = do
   token1 <- H.withManager $ \m -> Facebook.runFacebookT creds m (Facebook.getUserAccessTokenStep2
                                                                  "https://codeblock.github.io/socdiff/facebook.html"
                                                                  [("code", C8.pack code)])
-  Right (Facebook.UserAccessToken _ d _) <- H.withManager $ \m -> Facebook.runFacebookT creds m
-                                                                  (Facebook.extendUserAccessToken token1)
-  putStrLn "Add this to the facebook {...} section of your socdiff config"
-  putStrLn "(or replace any existing such line):"
-  putStrLn $ "  token = \"" ++ T.unpack d ++ "\""
+  extended <- H.withManager $ \m -> Facebook.runFacebookT creds m
+                                    (Facebook.extendUserAccessToken token1)
+  case extended of
+    Right (Facebook.UserAccessToken _ d _) ->
+      do
+        putStrLn "Add this to the facebook {...} section of your socdiff config"
+        putStrLn "(or replace any existing such line):"
+        putStrLn $ "  token = \"" ++ T.unpack d ++ "\""
+    Left _ ->
+      putStrLn "An error has occurred. Try again. :("
   return ()
