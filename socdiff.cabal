@@ -12,8 +12,8 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Web.Socdiff.Facebook.DataSource
-                       Web.Socdiff.Facebook.Facebook
+  exposed-modules:     Web.Socdiff.FB.DataSource
+                       Web.Socdiff.FB.FB
                        Web.Socdiff.Github.DataSource
                        Web.Socdiff.Github.Github
                        Web.Socdiff.Instagram.DataSource

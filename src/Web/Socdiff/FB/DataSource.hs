@@ -7,7 +7,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Web.Socdiff.Facebook.DataSource where
+module Web.Socdiff.FB.DataSource where
 
 import Control.Concurrent.Async
 import Control.Concurrent.QSem

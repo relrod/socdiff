@@ -12,8 +12,8 @@ import System.Directory (createDirectoryIfMissing, doesFileExist, getHomeDirecto
 import System.FilePath ((</>))
 
 import qualified Facebook
-import qualified Web.Socdiff.Facebook.DataSource as Facebook
-import qualified Web.Socdiff.Facebook.Facebook as Facebook
+import qualified Web.Socdiff.FB.DataSource as Facebook
+import qualified Web.Socdiff.FB.FB as Facebook
 
 import qualified Web.Socdiff.Github.DataSource as Github
 import qualified Web.Socdiff.Github.Github as Github
