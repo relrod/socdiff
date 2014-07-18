@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Your LinkedIn Access Token</title>
+    <style>
+      body {
+        margin-left: 30px;
+        font-family: sans-serif;
+      }
+      pre {
+        font-size: 2em;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Your LinkedIn Access Token Is...</h2>
+    <pre id="token"></pre>
+    <script>
+      document.getElementById("token").innerHTML = window.location.search.replace( "?code=", "" );
+    </script>
+  </body>
+</html>
