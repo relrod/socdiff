@@ -21,6 +21,9 @@ import qualified Web.Socdiff.Github.Github as Github
 import qualified Web.Socdiff.Instagram.DataSource as Instagram
 import qualified Web.Socdiff.Instagram.Instagram as Instagram
 
+import qualified Web.Socdiff.LinkedIn.DataSource as LinkedIn
+import qualified Web.Socdiff.LinkedIn.LinkedIn as LinkedIn
+
 import qualified Web.Socdiff.Twitter.DataSource as Twitter
 import qualified Web.Socdiff.Twitter.Twitter as Twitter
 
@@ -41,6 +44,10 @@ data Followers =
       instagramList :: [T.Text]
     , username      :: T.Text
     }
+  | LinkedInResult {
+      linkedInList :: [T.Text]
+    , username :: T.Text
+    }
 
 main :: IO ()
 main = do
@@ -56,6 +63,9 @@ main = do
   let fbCreds = Facebook.Credentials fbName fbId fbSecret
       fbUAT   = Facebook.UserAccessToken (Facebook.Id fbUser) fbToken now
 
+  linkedInToken <- Cfg.require config "linkedin.token" :: IO T.Text
+  linkedInUser  <- Cfg.require config "linkedin.username" :: IO T.Text
+
   instagramToken <- Cfg.require config "instagram.access_token" :: IO T.Text
   instagramUser  <- Cfg.require config "instagram.username" :: IO T.Text
 
@@ -70,6 +80,7 @@ main = do
   facebookState   <- Facebook.initGlobalState 2 fbCreds fbUAT
   githubState     <- Github.initGlobalState 2
   instagramState  <- Instagram.initGlobalState 2 instagramToken
+  linkedInState   <- LinkedIn.initGlobalState 2 linkedInToken
   twitterState    <- Twitter.initGlobalState 2 twitterKey twitterSecret
 
   -- Step two: Add it to the StateStore so that we can actually use it
@@ -77,22 +88,25 @@ main = do
         stateSet facebookState .
         stateSet githubState .
         stateSet instagramState .
+        stateSet linkedInState .
         stateSet twitterState $
         stateEmpty
 
   env' <- initEnv st ()
 
   -- Step three: Perform the actual data fetching (concurrently)
-  (fbFriends, twitterFollowers, githubFollowers, instagramFollowers) <-
-    runHaxl env' $ (,,,) <$>
+  (fbFriends, twitterFollowers, githubFollowers, instagramFollowers, linkedInConnections) <-
+    runHaxl env' $ (,,,,) <$>
       facebook' fbUser <*>
       github' "CodeBlock" <*>
       twitter' "relrod6" <*>
-      instagram' instagramUser
+      instagram' instagramUser <*>
+      linkedIn' linkedInUser
 
   handleResults cachePath env' [ fbFriends
                                , githubFollowers
                                , instagramFollowers
+                               , linkedInConnections
                                , twitterFollowers]
 
 generateDiff :: String -> String -> [String] -> [String] -> IO ()
@@ -119,6 +133,11 @@ instagram' :: T.Text -> GenHaxl u Followers
 instagram' user = do
   instagramFollowers <- Instagram.getFollowers user
   return $ InstagramResult (sort (fst <$> instagramFollowers)) user
+
+linkedIn' :: T.Text -> GenHaxl u Followers
+linkedIn' user = do
+  linkedInConnections <- LinkedIn.getConnections user
+  return $ LinkedInResult (sort linkedInConnections) user
 
 twitter' :: T.Text -> GenHaxl u Followers
 twitter' user = do
@@ -166,6 +185,13 @@ handleResults cachePath env' = mapM_ process
       createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
       generateDiff "Instagram" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
+      writeViaText filename' xs
+
+    process (LinkedInResult xs user) = do
+      let filename' = filename "LinkedIn" (T.unpack user)
+      createIfMissing filename'
+      oldCache <- fmap lines (readFile filename')
+      generateDiff "LinkedIn" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
       writeViaText filename' xs
 
     process (TwitterResult xs user) = do

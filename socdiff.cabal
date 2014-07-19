@@ -18,6 +18,8 @@ library
                        Web.Socdiff.Github.Github
                        Web.Socdiff.Instagram.DataSource
                        Web.Socdiff.Instagram.Instagram
+                       Web.Socdiff.LinkedIn.DataSource
+                       Web.Socdiff.LinkedIn.LinkedIn
                        Web.Socdiff.Twitter.DataSource
                        Web.Socdiff.Twitter.Twitter
 
