@@ -86,6 +86,7 @@ executable socdiff-linkedin-token
   build-depends:       base >= 4 && < 5
                      , bytestring >= 0.10 && < 1
                      , configurator >= 0.3 && < 1
+                     , lens >= 4.0 && < 5
                      , text >= 1 && < 2
                      , wreq >= 0.1.0.1 && < 0.2
 

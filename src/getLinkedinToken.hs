@@ -2,10 +2,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Applicative
+import Control.Lens
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.Configurator as Cfg
+import Data.Aeson.Lens
+import Data.List (intercalate)
+import Data.Monoid
 import qualified Data.Text as T
+import qualified Data.Text.IO
+import Network.Wreq
 import System.IO
+
+redirectUrl :: T.Text
+redirectUrl = "https://codeblock.github.io/socdiff/linkedin.html&state=f00bar12"
 
 -- | What do you know. LinkedIn uses oAuth too.
 --
@@ -25,14 +35,38 @@ import System.IO
 -- People actually thought this was a good idea.
 main :: IO ()
 main = do
-  config     <- Cfg.load [Cfg.Required "socdiff.cfg"]
-  liClientId <- Cfg.require config "linkedin.id" :: IO T.Text
+  config         <- Cfg.load [Cfg.Required "socdiff.cfg"]
+  liClientId     <- Cfg.require config "linkedin.id" :: IO T.Text
+  liClientSecret <- Cfg.require config "linkedin.secret" :: IO T.Text
 
   hSetBuffering stdout NoBuffering
-  putStrLn "Please go to this url in a *browser*, and paste the resulting code below:"
-  putStrLn $ "https://www.linkedin.com/uas/oauth2/authorization?response_type=" ++
-             "code&client_id=" ++ T.unpack liClientId ++ "&redirect_uri=" ++
-             "https://codeblock.github.io/socdiff/linkedin.html"
+  putStrLn $ "Please go to this url in a *browser*, and paste the resulting " ++
+           "code below:"
+  putStrLn $ "https://www.linkedin.com/uas/oauth2/authorization?response_" ++
+             "type=code&client_id=" ++ T.unpack liClientId ++ "&redirect_uri" ++
+             "=" ++ T.unpack redirectUrl
   putStr "Code: "
-  code <- getLine
+  code <- Data.Text.IO.getLine
+  token <- getToken code redirectUrl liClientId liClientSecret
+
+  putStrLn "Add this to the linkedin {...} section of your socdiff config"
+  putStrLn "(or replace any existing such line):"
+  putStrLn $ "  token = \"" ++ T.unpack token ++ "\""
+
   return ()
+
+getToken :: T.Text -> T.Text -> T.Text -> T.Text -> IO T.Text
+getToken code redirect clientId clientSecret = do
+  bearerResp <- post
+                ("https://www.linkedin.com/uas/oauth2/accessToken?" ++ data')
+                ["" := C8.pack ""]
+  return $ bearerResp ^?! responseBody . key "access_token" . _String
+  where
+    data' =
+      intercalate "&" $ (\(x, y) -> T.unpack x <> "=" <> T.unpack y) <$>
+      [ ("code"         , code)
+      , ("redirect_uri" , redirect)
+      , ("client_id"    , clientId)
+      , ("client_secret", clientSecret)
+      , ("grant_type"   , "authorization_code")
+      ]
