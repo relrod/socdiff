@@ -10,7 +10,7 @@ Facebook's awesome Haxl library, and this is what happened. :)
 Simply create a Haxl data source for each network that you wish to track, and
 reference it in the included runner program.
 
-API docs: http://codeblock.github.io/socdiff/api/
+API docs: http://relrod.github.io/socdiff/api/
 
 ### Examples of running it
 
@@ -19,7 +19,7 @@ API docs: http://codeblock.github.io/socdiff/api/
 ```
 $ socdiff
 Fetching Github followers
-+ Github:CodeBlock:rublets
++ Github:relrod:rublets
 Stored /home/ricky/.socdiff_cache
 ```
 
@@ -28,7 +28,7 @@ Stored /home/ricky/.socdiff_cache
 ```
 $ socdiff
 Fetching Github followers
-- Github:CodeBlock:rublets
+- Github:relrod:rublets
 Stored /home/ricky/.socdiff_cache
 ```
 
