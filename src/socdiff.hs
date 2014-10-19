@@ -98,7 +98,7 @@ main = do
   (fbFriends, twitterFollowers, githubFollowers, instagramFollowers, linkedInConnections) <-
     runHaxl env' $ (,,,,) <$>
       facebook' fbUser <*>
-      github' "CodeBlock" <*>
+      github' "relrod" <*>
       twitter' "relrod6" <*>
       instagram' instagramUser <*>
       linkedIn' linkedInUser
