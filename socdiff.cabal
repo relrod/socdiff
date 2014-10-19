@@ -1,7 +1,7 @@
 name:                socdiff
 version:             0.1.0.0
 synopsis:            Social diff
-homepage:            https://github.com/CodeBlock/socdiff
+homepage:            https://github.com/relrod/socdiff
 license:             BSD2
 license-file:        LICENSE
 author:              Ricky Elrod
