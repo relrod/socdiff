@@ -15,7 +15,7 @@ import Network.Wreq
 import System.IO
 
 redirectUrl :: T.Text
-redirectUrl = "https://codeblock.github.io/socdiff/linkedin.html&state=f00bar12"
+redirectUrl = "https://relrod.github.io/socdiff/linkedin.html&state=f00bar12"
 
 -- | What do you know. LinkedIn uses oAuth too.
 --

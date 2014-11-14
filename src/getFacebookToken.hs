@@ -33,7 +33,7 @@ main = do
   let creds = Facebook.Credentials fbName fbId fbSecret
 
   url <- H.withManager $ \m -> Facebook.runFacebookT creds m (Facebook.getUserAccessTokenStep1
-                                                              "https://codeblock.github.io/socdiff/facebook.html"
+                                                              "https://relrod.github.io/socdiff/facebook.html"
                                                               ["user_friends", "public_profile"])
 
   hSetBuffering stdout NoBuffering
@@ -42,7 +42,7 @@ main = do
   putStr "Code: "
   code <- getLine
   token1 <- H.withManager $ \m -> Facebook.runFacebookT creds m (Facebook.getUserAccessTokenStep2
-                                                                 "https://codeblock.github.io/socdiff/facebook.html"
+                                                                 "https://relrod.github.io/socdiff/facebook.html"
                                                                  [("code", C8.pack code)])
   extended <- H.withManager $ \m -> Facebook.runFacebookT creds m
                                     (Facebook.extendUserAccessToken token1)
