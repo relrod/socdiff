@@ -80,7 +80,7 @@ main = do
   facebookState   <- Facebook.initGlobalState 2 fbCreds fbUAT
   githubState     <- Github.initGlobalState 2
   instagramState  <- Instagram.initGlobalState 2 instagramToken
-  linkedInState   <- LinkedIn.initGlobalState 2 linkedInToken
+--  linkedInState   <- LinkedIn.initGlobalState 2 linkedInToken
   twitterState    <- Twitter.initGlobalState 2 twitterKey twitterSecret
 
   -- Step two: Add it to the StateStore so that we can actually use it
@@ -88,26 +88,33 @@ main = do
         stateSet facebookState .
         stateSet githubState .
         stateSet instagramState .
-        stateSet linkedInState .
+  --      stateSet linkedInState .
         stateSet twitterState $
         stateEmpty
 
   env' <- initEnv st ()
 
   -- Step three: Perform the actual data fetching (concurrently)
-  (fbFriends, twitterFollowers, githubFollowers, instagramFollowers, linkedInConnections) <-
-    runHaxl env' $ (,,,,) <$>
+  (
+      fbFriends
+    , twitterFollowers
+    , githubFollowers
+    , instagramFollowers
+--    , linkedInConnections
+    ) <-
+    runHaxl env' $ (,,,) <$>
       facebook' fbUser <*>
       github' "relrod" <*>
       twitter' "relrod6" <*>
-      instagram' instagramUser <*>
-      linkedIn' linkedInUser
+      instagram' instagramUser -- <*>
+--      linkedIn' linkedInUser
 
   handleResults cachePath env' [ fbFriends
                                , githubFollowers
                                , instagramFollowers
-                               , linkedInConnections
-                               , twitterFollowers]
+--                               , linkedInConnections
+                               , twitterFollowers
+                               ]
 
 generateDiff :: String -> String -> [String] -> [String] -> IO ()
 generateDiff source cachePath added removed = do
