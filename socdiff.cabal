@@ -48,7 +48,7 @@ library
                      , resourcet >= 1.1 && < 1.2
                      , text >= 1 && < 2
                      , transformers >= 0.4 && < 1
-                     , wreq >= 0.2 && < 0.3
+                     , wreq >= 0.3 && < 0.4
                      , time >= 1 && < 2
 
   hs-source-dirs:      src
@@ -92,7 +92,7 @@ executable socdiff-linkedin-token
                      , lens >= 4.4 && < 5
                      , lens-aeson >= 1 && < 2
                      , text >= 1 && < 2
-                     , wreq >= 0.2 && < 0.3
+                     , wreq >= 0.3 && < 0.4
 
   main-is:             src/getLinkedinToken.hs
   ghc-options:         -Wall -fno-warn-name-shadowing

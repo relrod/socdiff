@@ -75,19 +75,19 @@ fetchAsync consumerKey consumerSecret sem (BlockedFetch req rvar) =
 
 getToken :: T.Text -> T.Text -> IO T.Text
 getToken consumerKey consumerSecret = do
-  let bearerOpts = defaults & auth .~ basicAuth (TE.encodeUtf8 consumerKey) (TE.encodeUtf8 consumerSecret)
+  let bearerOpts = defaults & auth ?~ basicAuth (TE.encodeUtf8 consumerKey) (TE.encodeUtf8 consumerSecret)
   bearerResp <- postWith bearerOpts "https://api.twitter.com/oauth2/token" ["grant_type" := C8.pack "client_credentials"]
   return $ bearerResp ^?! responseBody . key "access_token" . _String
 
 fetchReq :: TwitterReq a -> T.Text -> IO a
 fetchReq (GetFollowerIDs u) bearerToken = do
-  let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
+  let oAuthOpts = defaults & auth ?~ oauth2Bearer (TE.encodeUtf8 bearerToken)
   resp <- getWith oAuthOpts ("https://api.twitter.com/1.1/followers/ids.json?screen_name=" ++ T.unpack u)
   return $ sort $ resp ^.. responseBody . key "ids" . values . _Integer
 
 fetchReq (GetUsernames []) _ = return mempty
 fetchReq (GetUsernames uids) bearerToken = do
-  let oAuthOpts = defaults & auth .~ oauth2Bearer (TE.encodeUtf8 bearerToken)
+  let oAuthOpts = defaults & auth ?~ oauth2Bearer (TE.encodeUtf8 bearerToken)
       uids' = intercalate "," $ fmap show uids
   resp <- Control.Exception.try $
             getWith oAuthOpts ("https://api.twitter.com/1.1/users/lookup.json?user_id=" ++ uids')
