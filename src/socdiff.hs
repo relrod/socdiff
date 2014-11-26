@@ -212,7 +212,7 @@ handleResults cachePath env' = mapM_ process
 
       -- Step 3: Watchers
       -- UNCOMMENT AFTER: https://github.com/jwiegley/github/issues/82 lands.
-      --flip mapM_ watchers $ \(r, ws) -> do
+      --forM_ watchers $ \(r, ws) -> do
       --  let cacheFile = extraDir </> T.unpack r ++ "_watchers"
       --  createIfMissing cacheFile
       --  oldCacheW <- fmap lines (readFile cacheFile)
