@@ -2,12 +2,14 @@
 module Main where
 
 import Control.Applicative
-import Control.Monad
+import Control.Monad hiding (mapM, mapM_, forM_)
 import qualified Data.Configurator as Cfg
-import Data.List ((\\), intercalate, sort)
+import Data.List ((\\), intercalate)
 import qualified Data.Text as T
 import Data.Time.Clock
 import Haxl.Core
+import Haxl.Prelude
+import Prelude hiding (mapM, mapM_)
 import System.Directory (createDirectoryIfMissing, doesFileExist, getHomeDirectory)
 import System.FilePath ((</>))
 
@@ -21,7 +23,6 @@ import qualified Web.Socdiff.Github.Github as Github
 import qualified Web.Socdiff.Instagram.DataSource as Instagram
 import qualified Web.Socdiff.Instagram.Instagram as Instagram
 
-import qualified Web.Socdiff.LinkedIn.DataSource as LinkedIn
 import qualified Web.Socdiff.LinkedIn.LinkedIn as LinkedIn
 
 import qualified Web.Socdiff.Twitter.DataSource as Twitter
@@ -33,8 +34,10 @@ data Followers =
     , username :: T.Text
     }
   | GithubResult {
-      ghList   :: [T.Text]
-    , username :: T.Text
+      ghFollowers  :: [T.Text]
+    , ghStargazers :: [(T.Text, [T.Text])]
+    , ghWatchers   :: [(T.Text, [T.Text])]
+    , username     :: T.Text
     }
   | TwitterResult {
       twList   :: [Integer]
@@ -69,6 +72,8 @@ main = do
   instagramToken <- Cfg.require config "instagram.access_token" :: IO T.Text
   instagramUser  <- Cfg.require config "instagram.username" :: IO T.Text
 
+  githubToken <- Cfg.require config "github.token" :: IO T.Text
+
   twitterKey    <- Cfg.require config "twitter.key" :: IO T.Text
   twitterSecret <- Cfg.require config "twitter.secret" :: IO T.Text
 
@@ -78,7 +83,7 @@ main = do
 
   -- Step one: Initialize the data store's state (give it login creds, etc)
   facebookState   <- Facebook.initGlobalState 2 fbCreds fbUAT
-  githubState     <- Github.initGlobalState 2
+  githubState     <- Github.initGlobalState 6 githubToken
   instagramState  <- Instagram.initGlobalState 2 instagramToken
 --  linkedInState   <- LinkedIn.initGlobalState 2 linkedInToken
   twitterState    <- Twitter.initGlobalState 2 twitterKey twitterSecret
@@ -98,7 +103,7 @@ main = do
   (
       fbFriends
     , twitterFollowers
-    , githubFollowers
+    , githubStats
     , instagramFollowers
 --    , linkedInConnections
     ) <-
@@ -110,7 +115,7 @@ main = do
 --      linkedIn' linkedInUser
 
   handleResults cachePath env' [ fbFriends
-                               , githubFollowers
+                               , githubStats
                                , instagramFollowers
 --                               , linkedInConnections
                                , twitterFollowers
@@ -134,7 +139,11 @@ facebook' user = do
 github' :: T.Text -> GenHaxl u Followers
 github' user = do
   githubFollowers <- sort <$> Github.getFollowers user
-  return $ GithubResult githubFollowers user
+  githubRepos <- Github.getRepos user
+  githubStargazers <- mapM (Github.getStargazers user) githubRepos
+  --githubWatchers <- mapM (Github.getWatchers user) githubRepos
+  let githubWatchers = []
+  return $ GithubResult githubFollowers githubStargazers githubWatchers user
 
 instagram' :: T.Text -> GenHaxl u Followers
 instagram' user = do
@@ -180,12 +189,35 @@ handleResults cachePath env' = mapM_ process
       generateDiff "Facebook" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
       writeViaText filename' xs
 
-    process (GithubResult xs user) = do
+    -- GitHub is a bit of a special case because of all the data we collect.
+    process (GithubResult followers stargazers watchers user) = do
+      -- Step 1: Process followers
       let filename' = filename "Github" (T.unpack user)
       createIfMissing filename'
       oldCache <- fmap lines (readFile filename')
-      generateDiff "Github" filename' (additions oldCache $ T.unpack <$> xs) (removals oldCache $ T.unpack <$> xs)
-      writeViaText filename' xs
+      generateDiff "Github" filename' (additions oldCache $ T.unpack <$> followers) (removals oldCache $ T.unpack <$> followers)
+      writeViaText filename' followers
+
+      -- Step 2: Create directory for extra data we collect.
+      let extraDir = cachePath </> (T.unpack user ++ "_github_extra")
+      createDirectoryIfMissing True extraDir
+
+      -- Step 3: Stargazers
+      forM_ stargazers $ \(r, ss) -> do
+        let cacheFile = extraDir </> T.unpack r ++ "_stargazers"
+        createIfMissing cacheFile
+        oldCacheS <- fmap lines (readFile cacheFile)
+        generateDiff "Github" cacheFile (additions oldCacheS $ T.unpack <$> ss) (removals oldCacheS $ T.unpack <$> ss)
+        writeViaText cacheFile ss
+
+      -- Step 3: Watchers
+      -- UNCOMMENT AFTER: https://github.com/jwiegley/github/issues/82 lands.
+      --flip mapM_ watchers $ \(r, ws) -> do
+      --  let cacheFile = extraDir </> T.unpack r ++ "_watchers"
+      --  createIfMissing cacheFile
+      --  oldCacheW <- fmap lines (readFile cacheFile)
+      --  generateDiff "Github" cacheFile (additions oldCacheW $ T.unpack <$> ws) (removals oldCacheW $ T.unpack <$> ws)
+      --  writeViaText cacheFile ws
 
     process (InstagramResult xs user) = do
       let filename' = filename "Instagram" (T.unpack user)
