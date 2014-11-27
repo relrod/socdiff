@@ -140,7 +140,7 @@ github' :: T.Text -> GenHaxl u Followers
 github' user = do
   githubFollowers <- sort <$> Github.getFollowers user
   githubRepos <- Github.getRepos user
-  githubStargazers <- mapM (Github.getStargazers user) githubRepos
+  githubStargazers <- filter (not . null . snd) <$> mapM (Github.getStargazers user) githubRepos
   --githubWatchers <- mapM (Github.getWatchers user) githubRepos
   let githubWatchers = []
   return $ GithubResult githubFollowers githubStargazers githubWatchers user
