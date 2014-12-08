@@ -4,7 +4,7 @@ cwd="$( cd "${BASH_SOURCE[0]%/*}" && pwd )"
 cd "$cwd/.."
 cabal haddock
 f=`mktemp -d`
-git clone git@github.com:CodeBlock/socdiff.git "$f/socdiff.git"
+git clone git@github.com:relrod/socdiff.git "$f/socdiff.git"
 pushd "$f/socdiff.git"
   git checkout gh-pages
   git rm -rf api
@@ -18,7 +18,7 @@ popd
 rm -rf "$f"
 
 if [ $? == 0 ]; then
-  echo "*** Done: http://codeblock.github.io/socdiff/api/"
+  echo "*** Done: http://relrod.github.io/socdiff/api/"
   exit 0
 else
   echo "*** ERROR!!! Fix the above and try again."
