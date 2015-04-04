@@ -2,7 +2,7 @@
 
 socdiff || {
   echo "Something bad happened. Examine above output and try again."
-  return 1
+  exit 1
 }
 
 pushd ~/.socdiff_cache
